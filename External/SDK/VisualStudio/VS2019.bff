@@ -1,7 +1,7 @@
 // Visual Studio 2019
 //------------------------------------------------------------------------------
-.VS2019_BasePath         = '$_CURRENT_BFF_DIR_$/2019/Community'
-.VS2019_Version          = '14.22.27905'
+.VS2019_BasePath         = 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\'
+.VS2019_Version          = '14.29.30133'
 
 // X64 Compiler
 //------------------------------------------------------------------------------
@@ -65,6 +65,7 @@ Compiler( 'Compiler-VS2019-x64' )
                                     + ' /wd4820' // '%s': '%u' bytes padding added after data member '%s'
                                     + ' /wd5039' // '%s': pointer or reference to potentially throwing function passed to extern C function under -EHc. Undefined behavior may occur if this function throws an exception.
                                     + ' /wd5045' // Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
+                                    + ' /Wv:18'  // a non-static data member with a volatile qualified type no longer implies that compiler generated copy/move constructors and copy/move assignment operators are not trivial
 
                                     // Include Paths
                                     + ' /I"./"'

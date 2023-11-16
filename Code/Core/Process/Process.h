@@ -7,6 +7,18 @@
 #include "Core/Env/Types.h"
 #include "Core/Containers/AutoPtr.h"
 
+#if defined( __APPLE__ )
+    #if defined( __OBJC__ )
+        #import <Cocoa/Cocoa.h>
+    #else
+        class NSTask;
+        class NSData;
+        class NSPipe;
+    #endif
+
+    #define APPLE_PROCESS_USE_NSTASK
+#endif
+
 // Process
 //------------------------------------------------------------------------------
 class Process
@@ -56,6 +68,8 @@ private:
         void Read( void * handle, AutoPtr< char > & buffer, uint32_t & sizeSoFar, uint32_t & bufferSize );
         char * Read( void * handle, uint32_t * bytesRead );
         uint32_t Read( void * handle, char * outputBuffer, uint32_t outputBufferSize );
+    #elif defined( __APPLE__ ) && defined( APPLE_PROCESS_USE_NSTASK )
+        void Read( NSData * availableData, AutoPtr< char > & buffer, uint32_t & sizeSoFar, uint32_t & bufferSize );
     #else
         void Read( int handle, AutoPtr< char > & buffer, uint32_t & sizeSoFar, uint32_t & bufferSize );
     #endif
@@ -88,13 +102,20 @@ private:
         void * m_StdInWrite;    // HANDLE
     #endif
 
-    #if defined( __LINUX__ ) || defined( __APPLE__ )
+    #if defined( __LINUX__ ) || ( defined( __APPLE__) && !defined( APPLE_PROCESS_USE_NSTASK ) )
         int m_ChildPID;
         mutable bool m_HasAlreadyWaitTerminated;
         mutable int m_ReturnStatus;
         int m_StdOutRead;
         int m_StdErrRead;
     #endif
+ 
+    #if defined( __APPLE__) && defined( APPLE_PROCESS_USE_NSTASK )
+        NSTask * m_Task;
+        NSPipe * m_StdOutRead;
+        NSPipe * m_StdErrRead;
+    #endif
+
     bool m_HasAborted;
     const volatile bool * m_MasterAbortFlag; // This member is set when we must cancel processes asap when the master process dies.
     const volatile bool * m_AbortFlag;

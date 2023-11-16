@@ -5,6 +5,8 @@
 //------------------------------------------------------------------------------
 #include "Process.h"
 
+#if !defined( __APPLE__ ) || !defined( APPLE_PROCESS_USE_NSTASK )
+
 #include "Core/Env/Assert.h"
 #include "Core/FileIO/FileIO.h"
 #include "Core/Math/Conversions.h"
@@ -31,6 +33,7 @@
     #include <string.h>
     #include <sys/wait.h>
     #include <unistd.h>
+    #include <wordexp.h>
 #endif
 
 // Static Data
@@ -308,21 +311,29 @@ bool Process::Spawn( const char * executable,
         if ( args )
         {
             // Tokenize
-            AStackString<> argCopy( args );
-            argCopy.Tokenize( splitArgs );
+            wordexp_t expResult;
+            memset(&expResult, 0, sizeof(wordexp_t));
 
-            // Build Vector
-            for ( auto & arg : splitArgs )
+            int wordRes = wordexp( args, &expResult, 0 );
+            if (wordRes != 0)
+                return false;
+
+            char** words = expResult.we_wordv;
+            unsigned int wordCount = expResult.we_wordc;
+
+            // Set capacity here to avoid reallocation while appending
+            splitArgs.SetCapacity(wordCount);
+            argVector.SetCapacity(wordCount + 1); // + 1 for the nullptr terminator
+
+            for ( unsigned int wordIndex = 0; wordIndex < wordCount; ++wordIndex )
             {
-                if ( arg.BeginsWith( '"' ) && arg.EndsWith( '"' ) )
-                {
-                    // strip quotes
-                    arg.SetLength( arg.GetLength() - 1 ); // trim end quote
-                    argVector.Append( arg.Get() + 1 ); // skip start quote
-                    continue;
-                }
-                argVector.Append( arg.Get() ); // leave arg as-is
+                // Make a copy of the string and stick it in splitArgs, as the strings allocated
+                // by wordexp will be freed when we leave this scope.
+                splitArgs.Append( AString( words[wordIndex] ) );
+                argVector.Append( splitArgs.Top().Get() );
             }
+
+            wordfree( &expResult );
         }
         argVector.Append( nullptr ); // argv must have be nullptr terminated
 
@@ -582,7 +593,7 @@ bool Process::ReadAllData( AutoPtr< char > & outMem, uint32_t * outMemSize,
 
     Timer t;
 
-    #if defined( __LINUX__ )
+    #if defined( __LINUX__ ) || defined( __APPLE__ )
         // Start with a short sleep interval to allow rapid termination of
         // short-lived processes. The timeout increases during periods of
         // no output and reset when receiving output to balance responsiveness
@@ -611,8 +622,8 @@ bool Process::ReadAllData( AutoPtr< char > & outMem, uint32_t * outMemSize,
         // did we get some data?
         if ( ( prevOutSize != outSize ) || ( prevErrSize != errSize ) )
         {
-            #if defined( __LINUX__ )
-                // Reset sleep interval            
+            #if defined( __LINUX__ ) || defined( __APPLE__ )
+                // Reset sleep interval
                 sleepIntervalMS = 1;
             #endif
             continue; // try reading again right away incase there is more
@@ -651,19 +662,12 @@ bool Process::ReadAllData( AutoPtr< char > & outMem, uint32_t * outMemSize,
                 }
 
                 // no data available, but process is still going, so wait
-                #if defined( __OSX__ )
-                    // On OSX there seems to be no way to set the pipe bufffer
-                    // size so we must instead wake up frequently to avoid the
-                    // writer being blocked.
-                    Thread::Sleep( 2 );
-                #else
-                    // TODO:C Investigate waiting on an event when process terminates
-                    // to reduce overall process spawn time
-                    Thread::Sleep( sleepIntervalMS );
+                // TODO:C Investigate waiting on an event when process terminates
+                // to reduce overall process spawn time
+                Thread::Sleep( sleepIntervalMS );
 
-                    // Increase sleep interval upto limit
-                    sleepIntervalMS = Math::Min<uint32_t>( sleepIntervalMS * 2, 8 );
-                #endif
+                // Increase sleep interval upto limit
+                sleepIntervalMS = Math::Min<uint32_t>( sleepIntervalMS * 2, 8 );
                 continue;
             }
         #endif
@@ -916,3 +920,5 @@ void Process::Terminate()
 }
 
 //------------------------------------------------------------------------------
+
+#endif // !defined( __APPLE__ ) || !defined( APPLE_PROCESS_USE_NSTASK )

@@ -54,6 +54,8 @@ private:
     #if defined( __LINUX__ )
         static bool GetProcessInfoString( const char * fileName,
                                           AStackString< 1024 > & outProcessInfoString );
+    #elif defined( __OSX__ )
+        static uint64_t ConvertTimeString( const AString & timeString );
     #endif
 
     Timer   m_Timer;
