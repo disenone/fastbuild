@@ -10,6 +10,7 @@
 #include "Core/Containers/Array.h"
 #include "Core/Env/Env.h"
 #include "Core/Strings/AStackString.h"
+#include "Core/Tracing/Tracing.h"
 
 // system
 #include <stdio.h>
@@ -123,6 +124,11 @@ bool FBuildWorkerOptions::ProcessCommandLine( const AString & commandLine )
                 continue;
             }
         #endif
+        else if (token.BeginsWith("-coordinator="))
+        {
+            m_Coordinator = token.Get() + strlen("-coordinator=");
+            continue;
+        }
 
         ShowUsageError();
         return false;
@@ -135,7 +141,7 @@ bool FBuildWorkerOptions::ProcessCommandLine( const AString & commandLine )
 //------------------------------------------------------------------------------
 void FBuildWorkerOptions::ShowUsageError()
 {
-    const char * msg = "FBuildWorker.exe - " FBUILD_VERSION_STRING "\n"
+    AStackString<1024> msg ("FBuildWorker.exe - " FBUILD_VERSION_STRING "\n"
                        "Copyright 2012-2019 Franta Fulin - http://www.fastbuild.org\n"
                        "\n"
                        "Command Line Options:\n"
@@ -151,14 +157,14 @@ void FBuildWorkerOptions::ShowUsageError()
                        "                dedicated : Accept work always.\n"
                        "                proportional : Accept work proportional to free CPU.\n"
                        "\n"
+                       "-coordinator=ip_address : Set FBuildCoordinator ip address.\n"
                        #if defined( __WINDOWS__ )
-                       "-nosubprocess : Don't spawn a sub-process worker copy.\n";
-                       #else
-                       ;
+                       "-nosubprocess : Don't spawn a sub-process worker copy.\n"
                        #endif
+    );
 
     #if defined( __WINDOWS__ )
-        ::MessageBox( nullptr, msg, "FBuildWorker - Bad Command Line", MB_ICONERROR | MB_OK );
+        ::MessageBox( nullptr, msg.Get(), "FBuildWorker - help message", MB_ICONERROR | MB_OK );
     #else
         printf( "%s", msg );
         (void)msg; // TODO:MAC Fix missing MessageBox

@@ -32,6 +32,8 @@ public:
 
     int32_t Work();
 
+    void SetCoordinator(const AString & coordinator) { m_WorkerBrokerage.SetCoordinator(coordinator); }
+
 private:
     static uint32_t WorkThreadWrapper( void * userData );
     uint32_t WorkThread();

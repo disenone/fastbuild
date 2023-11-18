@@ -20,7 +20,12 @@ public:
     WorkerBrokerage();
     ~WorkerBrokerage();
 
-    inline const AString & GetBrokerageRoot() const { return m_BrokerageRoot; }
+    inline const AString & GetBrokerageRoot() const 
+    { 
+        if(!m_CoordinatorAddress.IsEmpty()) return m_CoordinatorAddress;
+
+        return m_BrokerageRoot; 
+    }
 
     // client interface
     void FindWorkers( Array< AString > & workerList );
@@ -28,6 +33,9 @@ public:
 
     // server interface
     void SetAvailability( bool available );
+
+    inline void SetCoordinator(const AString& coordinator ) { m_CoordinatorAddress = coordinator; }
+
 private:
     void Init();
 

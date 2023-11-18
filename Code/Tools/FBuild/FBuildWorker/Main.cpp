@@ -149,6 +149,11 @@ int MainCommon( const AString & args )
         {
             WorkerSettings::Get().SetMode( options.m_WorkMode );
         }
+        if( !options.m_Coordinator.IsEmpty() )
+        {
+            worker.SetCoordinator( options.m_Coordinator );
+        }
+
         ret = worker.Work();
     }
 

@@ -14,6 +14,7 @@
 #include "Core/Tracing/Tracing.h"
 #include "Core/FileIO/ConstMemoryStream.h"
 #include "Core/FileIO/MemoryStream.h"
+#include "Core/Time/Time.h"
 
 // CONSTRUCTOR
 //------------------------------------------------------------------------------
@@ -105,13 +106,16 @@ void WorkerConnectionPool::OnConnected( const ConnectionInfo * connection )
 {
     AStackString<> remoteAddr;
     TCPConnectionPool::GetAddressAsString( connection->GetRemoteAddress(), remoteAddr );
-    OUTPUT( "OnConnected %s\n", remoteAddr.Get() );
+    //DEBUGSPAM( "[OnConnected] %s, %u, %p\n", remoteAddr.Get(), Time::GetCurrentFileTime(), (void*)connection);
 }
 
 // OnDisconnected
 //------------------------------------------------------------------------------
-void WorkerConnectionPool::OnDisconnected( const ConnectionInfo * )
+void WorkerConnectionPool::OnDisconnected( const ConnectionInfo * connection )
 {
+    AStackString<> remoteAddr;
+    TCPConnectionPool::GetAddressAsString( connection->GetRemoteAddress(), remoteAddr );
+    //DEBUGSPAM( "[OnDisconnected] %s, %u, %p, %d\n", remoteAddr.Get(), Time::GetCurrentFileTime(), (void*)connection);
 }
 
 // Process ( MsgRequestWorkerList )
@@ -148,17 +152,25 @@ void WorkerConnectionPool::Process( const ConnectionInfo * connection, const Pro
     uint32_t numWorkers( 0 );
     ms.Read( numWorkers );
 
-    OUTPUT( "%u workers in payload\n", numWorkers );
 
     Array< uint32_t > workers;
     workers.SetCapacity( numWorkers );
 
+    AStackString<> list;
     for ( size_t i=0; i<(size_t)numWorkers; ++i )
     {
         uint32_t workerAddress( 0 );
 		ms.Read( workerAddress );
         workers.Append( workerAddress );
+
+        AStackString<> remoteAddr;
+        TCPConnectionPool::GetAddressAsString( workerAddress, remoteAddr );
+        if(list.GetLength() > 0)
+            list += ", ";
+        list += remoteAddr;
     }
+
+    OUTPUT( "%u workers in payload: [%s]\n", numWorkers, list.Get() );
 
     WorkerBrokerage * brokerage = ( WorkerBrokerage *)connection->GetUserData();
     ASSERT( brokerage );
@@ -167,6 +179,21 @@ void WorkerConnectionPool::Process( const ConnectionInfo * connection, const Pro
 
 // Process ( MsgSetWorkerStatus )
 //------------------------------------------------------------------------------
+
+void DebugOutputWorkers(const Array< WorkerInfo >& workers)
+{
+    AStackString<> list;
+    for(auto& worker: workers)
+    {
+        AStackString<> remoteAddr;
+        TCPConnectionPool::GetAddressAsString( worker.m_Address, remoteAddr );
+        if(list.GetLength() > 0)
+            list += ", ";
+        list += remoteAddr;
+    }
+    DEBUGSPAM("current workers: [%s]\n", list.Get());
+}
+
 void WorkerConnectionPool::Process( const ConnectionInfo * connection, const Protocol::MsgSetWorkerStatus * msg )
 {
     MutexHolder mh( m_Mutex );
@@ -186,6 +213,8 @@ void WorkerConnectionPool::Process( const ConnectionInfo * connection, const Pro
     {
         m_Workers.FindAndErase( workerAddress );
     }
+
+    DebugOutputWorkers(m_Workers);
 }
 
 //------------------------------------------------------------------------------

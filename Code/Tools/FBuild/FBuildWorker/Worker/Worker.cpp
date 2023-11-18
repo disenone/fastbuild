@@ -267,6 +267,7 @@ void Worker::UpdateAvailability()
 
     WorkerSettings & ws = WorkerSettings::Get();
     uint32_t numCPUsToUse = ws.GetNumCPUsToUse();
+    uint32_t pre_cpu = numCPUsToUse;
     switch( ws.GetMode() )
     {
         case WorkerSettings::WHEN_IDLE:
@@ -306,6 +307,8 @@ void Worker::UpdateAvailability()
         numCPUsToUse = 0;
     }
 
+    if( pre_cpu != numCPUsToUse)
+        DEBUGSPAM("[numCPUsToUse] %d\n", numCPUsToUse);
     WorkerThreadRemote::SetNumCPUsToUse( numCPUsToUse );
 
     m_WorkerBrokerage.SetAvailability( numCPUsToUse > 0);

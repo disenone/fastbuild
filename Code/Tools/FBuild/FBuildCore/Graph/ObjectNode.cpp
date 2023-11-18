@@ -2471,6 +2471,7 @@ bool ObjectNode::CompileHelper::SpawnCompiler( Job * job,
         environmentString = compilerNode->GetEnvironmentString();
     }
 
+    DEBUGSPAM("SpawnCompiler: %s, %s, %s, %s", compiler.Get(), fullArgs.GetFinalArgs().Get(), workingDir, environmentString);
     // spawn the process
     if ( false == m_Process.Spawn( compiler.Get(),
                                    fullArgs.GetFinalArgs().Get(),

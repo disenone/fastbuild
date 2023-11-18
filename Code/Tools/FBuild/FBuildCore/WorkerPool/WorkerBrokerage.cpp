@@ -125,7 +125,7 @@ void WorkerBrokerage::Init()
     }
     else
     {
-        OUTPUT( "Using coordinator\n" );
+        OUTPUT( "Using coordinator: %s\n", m_CoordinatorAddress.Get() );
     }
 
     m_TimerLastUpdate.Start();
@@ -269,8 +269,9 @@ void WorkerBrokerage::SetAvailability(bool available)
                 Protocol::MsgSetWorkerStatus msg( available );
                 msg.Send( m_Connection );
                 DisconnectFromCoordinator();
+                m_TimerLastUpdate.Start();
             }
-            else
+            else if ( !m_BrokerageRoot.IsEmpty() )
             {
                 //
                 // Ensure that the file will be recreated if cleanup is done on the brokerage path.
@@ -297,7 +298,7 @@ void WorkerBrokerage::SetAvailability(bool available)
             msg.Send( m_Connection );
             DisconnectFromCoordinator();
         }
-        else
+        else if ( !m_BrokerageRoot.IsEmpty() )
         {
             // remove file to remove availability
             FileIO::FileDelete( m_BrokerageFilePath.Get() );

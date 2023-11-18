@@ -394,12 +394,14 @@ void Client::Process( const ConnectionInfo * connection, const Protocol::MsgRequ
 {
     PROFILE_SECTION( "MsgRequestJob" )
 
+    DEBUGSPAM("Request job\n");
     ServerState * ss = (ServerState *)connection->GetUserData();
     ASSERT( ss );
 
     // no jobs for blacklisted workers
     if ( ss->m_Blacklisted )
     {
+        DEBUGSPAM("Request job: blocked\n");
         MutexHolder mh( ss->m_Mutex );
         Protocol::MsgNoJobAvailable msg;
         SendMessageInternal( connection, msg );
@@ -410,6 +412,7 @@ void Client::Process( const ConnectionInfo * connection, const Protocol::MsgRequ
     if ( job == nullptr )
     {
         PROFILE_SECTION( "NoJob" )
+        DEBUGSPAM("Request job: NoJob\n");
         // tell the client we don't have anything right now
         // (we completed or gave away the job already)
         MutexHolder mh( ss->m_Mutex );
@@ -607,7 +610,7 @@ void Client::Process( const ConnectionInfo * connection, const Protocol::MsgJobR
                        " - Node              : %s\n"
                        " - Job Error Count   : %u / %u\n"
                        " - Details           :\n"
-                       "%s",
+                       "\"%s\"",
                        workerName.Get(),
                        job->GetNode()->GetName().Get(),
                        job->GetSystemErrorCount(), SYSTEM_ERROR_ATTEMPT_COUNT,

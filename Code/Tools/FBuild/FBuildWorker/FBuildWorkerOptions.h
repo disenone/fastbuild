@@ -9,6 +9,7 @@
 
 // Core
 #include "Core/Env/Types.h"
+#include "Core/Strings/AString.h"
 
 // Forward Declaration
 //------------------------------------------------------------------------------
@@ -38,6 +39,7 @@ public:
     // Console mode
     bool m_ConsoleMode;
 
+    AString m_Coordinator;
 private:
     void ShowUsageError();
 };
