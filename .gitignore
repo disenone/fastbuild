@@ -65,3 +65,6 @@ External/SDK/Windows/*/
 Network Trash Folder
 Temporary Items
 .apdisk
+
+.vscode
+*.diff
