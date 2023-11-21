@@ -1,0 +1,119 @@
+// FBuildCoordinator
+//------------------------------------------------------------------------------
+{
+    .ProjectName        = 'FBuildCoordinator'
+    .ProjectPath        = 'Tools\FBuild\FBuildCoordinator'
+
+    // Executable
+    //--------------------------------------------------------------------------
+    .ProjectConfigs = {}
+    ForEach( .BuildConfig in .BuildConfigs )
+    {
+        Using( .BuildConfig )
+        .OutputBase + '/$Platform$-$BuildConfigName$'
+
+        // Unity
+        //--------------------------------------------------------------------------
+        Unity( '$ProjectName$-Unity-$Platform$-$BuildConfigName$' )
+        {
+            .UnityInputPath             = '$ProjectPath$/'
+            .UnityOutputPath            = '$OutputBase$/$ProjectPath$/'
+            .UnityOutputPattern         = '$ProjectName$_Unity*.cpp'
+        }
+
+        // Library
+        //--------------------------------------------------------------------------
+        ObjectList( '$ProjectName$-Lib-$Platform$-$BuildConfigName$' )
+        {
+            // Input (Unity)
+            .CompilerInputUnity         = '$ProjectName$-Unity-$Platform$-$BuildConfigName$'
+
+            // Output
+            .CompilerOutputPath         = '$OutputBase$/$ProjectPath$/'
+        }
+
+        // Executable
+        //--------------------------------------------------------------------------
+        Executable( '$ProjectName$-Exe-$Platform$-$BuildConfigName$' )
+        {
+            .Libraries                  = {
+                                            'FBuildCoordinator-Lib-$Platform$-$BuildConfigName$',
+                                            'FBuildCore-Lib-$Platform$-$BuildConfigName$',
+                                            'Core-Lib-$Platform$-$BuildConfigName$',
+                                            'LZ4-Lib-$Platform$-$BuildConfigName$'
+                                            'xxHash-Lib-$Platform$-$BuildConfigName$'
+                                            'Zstd-Lib-$Platform$-$BuildConfigName$'
+                                          }
+            #if __LINUX__
+                .LinkerOutput               = '$OutputBase$/$ProjectPath$/fbuildcoordinator$ExeExtension$' // NOTE: lower case
+            #else
+                .LinkerOutput               = '$OutputBase$/$ProjectPath$/FBuildCoordinator$ExeExtension$'
+            #endif
+            #if __WINDOWS__
+                .LinkerOptions              + ' /SUBSYSTEM:CONSOLE'
+                                            + ' Advapi32.lib'
+                                            + ' kernel32.lib'
+                                            + ' Ws2_32.lib'
+                                            + ' User32.lib'
+                                            + ' Iphlpapi.lib'
+                                            + .CRTLibs_Static
+            #endif
+            #if __LINUX__
+                .LinkerOptions              + ' -pthread -ldl -lrt'
+
+                .LinkerStampExe             = '/bin/bash'
+                .ExtractDebugInfo           = 'objcopy --only-keep-debug $LinkerOutput$ $LinkerOutput$.debug'
+                .StripDebugInfo             = 'objcopy --strip-debug $LinkerOutput$'
+                .AddDebugLink               = 'objcopy --add-gnu-debuglink $LinkerOutput$.debug $LinkerOutput$'
+                .LinkerStampExeArgs         = '-c "$ExtractDebugInfo$ && $StripDebugInfo$ && $AddDebugLink$"'
+            #endif
+        }
+        Alias( '$ProjectName$-$Platform$-$BuildConfigName$' ) { .Targets = '$ProjectName$-Exe-$Platform$-$BuildConfigName$' }
+        ^'Targets_$Platform$_$BuildConfigName$' + { '$ProjectName$-$Platform$-$BuildConfigName$' }
+
+        #if __WINDOWS__
+            .ProjectConfig              = [ Using( .'Project_$Platform$_$BuildConfigName$' ) .Target = '$ProjectName$-$Platform$-$BuildConfigName$' ]
+            ^ProjectConfigs             + .ProjectConfig
+        #endif
+        #if __OSX__
+            .ProjectConfig              = [ .Config = '$BuildConfigName$'   .Target = '$ProjectName$-x64OSX-$BuildConfigName$' ]
+            ^ProjectConfigs             + .ProjectConfig
+        #endif
+    }
+
+    // Create Universal binaries
+    #if CLANG_SUPPORTS_ARMOSX
+        ForEach( .BuildConfig in .BuildConfigs )
+        {
+            Using( .BuildConfig )
+            If( .Platform == 'ARMOSX' )
+            {
+                CreateUniversalBinary( .ProjectName, .ProjectPath, .BuildConfigName, .OutputBase )
+                ^'Targets_OSX_$BuildConfigName$' + { '$ProjectName$-OSX-$BuildConfigName$' }
+            }
+        }
+    #endif
+
+    // Aliases
+    //--------------------------------------------------------------------------
+    CreateCommonAliases( .ProjectName )
+
+    // Visual Studio Project Generation
+    //--------------------------------------------------------------------------
+    #if __WINDOWS__
+        CreateVCXProject_Exe( .ProjectName, .ProjectPath, .ProjectConfigs )
+    #endif
+
+    // XCode Project Generation
+    //--------------------------------------------------------------------------
+    #if __OSX__
+        XCodeProject( '$ProjectName$-xcodeproj' )
+        {
+            .ProjectOutput              = '../tmp/XCode/Projects/3_Apps/$ProjectName$.xcodeproj/project.pbxproj'
+            .ProjectInputPaths          = '$ProjectPath$/'
+            .ProjectBasePath            = '$ProjectPath$/'
+
+            .XCodeBuildWorkingDir       = '../../../../Code/'
+        }
+    #endif
+}

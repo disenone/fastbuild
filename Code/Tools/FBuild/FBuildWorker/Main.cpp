@@ -25,6 +25,11 @@
     #include "Core/Env/WindowsHeader.h"
 #endif
 
+#if defined( __APPLE__ )
+    #include <sys/resource.h>
+    #include <limits.h>
+#endif
+
 // Global Data
 //------------------------------------------------------------------------------
 // only allow 1 worker per system
@@ -123,6 +128,12 @@ int Main( const AString & args )
         // TODO:LINUX SetPriorityClass equivalent
     #endif
 
+    // increase the limit of simultaneously open files on macOS to maximum allowed
+    #if defined( __APPLE__)
+        struct rlimit limit = { OPEN_MAX, RLIM_INFINITY };
+        setrlimit( RLIMIT_NOFILE, &limit );
+    #endif
+
     // start the worker and wait for it to be closed
     int ret;
     {
@@ -138,6 +149,14 @@ int Main( const AString & args )
         if ( options.m_MinimumFreeMemoryMiB )
         {
             WorkerSettings::Get().SetMinimumFreeMemoryMiB( options.m_MinimumFreeMemoryMiB );
+        }
+        if ( !options.m_CoordinatorAddress.IsEmpty() )
+        {
+            worker.SetCoordinatorAddress( options.m_CoordinatorAddress );
+        }
+        if ( !options.m_BrokeragePath.IsEmpty() )
+        {
+            worker.SetBrokeragePath( options.m_BrokeragePath );
         }
         ret = worker.Work();
     }

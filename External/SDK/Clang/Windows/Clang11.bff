@@ -26,10 +26,11 @@
             //
             // Failed
             //
-            Print( '----------------------------------------------------------------------' )
-            Print( '- Unable to auto-detect Clang - please specify installation manually -' )
-            Print( '----------------------------------------------------------------------' )
-            .Clang11_BasePath = .Set_Path_Here    // <-- Set path here
+            //Print( '----------------------------------------------------------------------' )
+            //Print( '- Unable to auto-detect Clang - please specify installation manually -' )
+            //Print( '----------------------------------------------------------------------' )
+            .Clang11_BasePath = 'C:/Program Files (x86)/Microsoft Visual Studio/2019/Professional/VC/Tools/LLVM/x64'    // <-- Set path here
+            .Clang11_Version    = '12.x.x'
         #endif
     #endif
 #endif

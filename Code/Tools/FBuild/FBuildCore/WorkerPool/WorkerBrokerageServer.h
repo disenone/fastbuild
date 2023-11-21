@@ -12,8 +12,10 @@
 
 // Forward Declarations
 //------------------------------------------------------------------------------
+class WorkerConnectionPool;
+class ConnectionInfo;
 
-// WorkerBrokerageClient
+// WorkerBrokerageServer
 //------------------------------------------------------------------------------
 class WorkerBrokerageServer : public WorkerBrokerage
 {
@@ -28,6 +30,9 @@ public:
 protected:
     void UpdateBrokerageFilePath();
 
+    void SetAvailabilityToBrokerage( bool available );
+    void SetAvailabilityToCoordinator( bool available );
+
     Timer               m_TimerLastUpdate;      // Throttle network access
     Timer               m_TimerLastIPUpdate;    // Throttle dns access
     Timer               m_TimerLastCleanBroker;
@@ -37,6 +42,7 @@ protected:
     AString             m_IPAddress;
     AString             m_DomainName;
     AString             m_HostName;
+
 };
 
 //------------------------------------------------------------------------------

@@ -146,8 +146,23 @@ bool FBuildWorkerOptions::ProcessCommandLine( const AString & commandLine )
                 continue;
             }
         #endif
+        else if (token.BeginsWith("-coordinator="))
+        {
+            m_CoordinatorAddress = token.Get() + strlen("-coordinator=");
+            continue;
+        }
+        else if (token.BeginsWith("-brokerage="))
+        {
+            m_BrokeragePath = token.Get() + strlen("-brokerage=");
+            continue;
+        }
+        else if (token.BeginsWith("-help"))
+        {
+            ShowUsageError(AStackString("Help"));
+            return false;
+        }
 
-        ShowUsageError();
+        ShowUsageError(AStackString("Bad Command Line"));
         return false;
     }
 
@@ -156,7 +171,7 @@ bool FBuildWorkerOptions::ProcessCommandLine( const AString & commandLine )
 
 // ShowUsageError
 //------------------------------------------------------------------------------
-void FBuildWorkerOptions::ShowUsageError()
+void FBuildWorkerOptions::ShowUsageError(const AString & title)
 {
     const char * msg = "FBuildWorker.exe - " FBUILD_VERSION_STRING "\n"
                        "Copyright 2012-2023 Franta Fulin - https://www.fastbuild.org\n"
@@ -183,11 +198,19 @@ void FBuildWorkerOptions::ShowUsageError()
                        "        (Windows) Don't spawn a sub-process worker copy.\n"
                        " -periodicrestart\n"
                        "        Worker will restart every 4 hours.\n"
+                       " -coordinator=<ip address>\n"
+                       "        - Set FBuildCoordinator ip address.\n"
+                       " -brokerage=<path>\n"
+                       "        - Set Brokerage path.\n"
+                       " -help\n"
+                       "        - Show this message."
                        "---------------------------------------------------------------------------\n"
                        ;
 
     #if defined( __WINDOWS__ )
-        ::MessageBox( nullptr, msg, "FBuildWorker - Bad Command Line", MB_ICONERROR | MB_OK );
+        AStackString<> msg_title;
+        msg_title.Format("FBuildWorker - %s", title);
+        ::MessageBox( nullptr, msg, msg_title.Get(), MB_ICONERROR | MB_OK );
     #else
         printf( "%s", msg );
         (void)msg; // TODO:MAC Fix missing MessageBox

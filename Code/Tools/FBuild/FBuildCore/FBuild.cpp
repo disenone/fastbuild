@@ -95,6 +95,15 @@ FBuild::FBuild( const FBuildOptions & options )
     FLog::SetShowProgress( m_Options.m_ShowProgress );
     FLog::SetMonitorEnabled( m_Options.m_EnableMonitor );
 
+    if ( !options.m_CoordinatorAddress.IsEmpty() )
+    {
+        m_WorkerBrokerage.SetCoordinatorAddress( options.m_CoordinatorAddress );
+    }
+    if ( !options.m_BrokeragePath.IsEmpty() )
+    {
+        m_WorkerBrokerage.SetBrokeragePath( options.m_BrokeragePath );
+    }
+
     if ( options.m_Profile )
     {
         FNEW( BuildProfiler );

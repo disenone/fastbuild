@@ -9,6 +9,7 @@
 #include "Tools/FBuild/FBuildCore/FBuildVersion.h"
 #include "Tools/FBuild/FBuildCore/FLog.h"
 #include "Tools/FBuild/FBuildWorker/Worker/WorkerSettings.h"
+#include "Tools/FBuild/FBuildCore/Protocol/Protocol.h"
 
 // Core
 #include "Core/Env/Env.h"
@@ -53,11 +54,53 @@ void WorkerBrokerageServer::SetAvailability( bool available )
     InitBrokerage();
 
     // ignore if brokerage not configured
-    if ( m_BrokerageRoots.IsEmpty() )
+    if ( m_BrokerageRoots.IsEmpty() && m_CoordinatorAddress.IsEmpty() )
     {
         return;
     }
 
+    if ( !m_CoordinatorAddress.IsEmpty() )
+        SetAvailabilityToCoordinator( available );
+    else if( !m_BrokerageRoots.IsEmpty() )
+        SetAvailabilityToBrokerage( available );
+}
+
+
+// SetAvailabilityToCoordinator
+//------------------------------------------------------------------------------
+void WorkerBrokerageServer::SetAvailabilityToCoordinator( bool available )
+{
+    if ( m_Available != available )
+    {
+        if ( ConnectToCoordinator() )
+        {
+            Protocol::MsgSetWorkerStatus msg( available );
+            msg.Send( m_Connection );
+            DisconnectFromCoordinator();
+            m_Available = available;
+        }
+    }
+    else
+    {
+        // Check the last update time to avoid too much File IO.
+        const float elapsedTime = m_TimerLastUpdate.GetElapsed();
+        if ( elapsedTime >= sBrokerageAvailabilityUpdateTime )
+        {
+            if ( ConnectToCoordinator() )
+            {
+                Protocol::MsgSetWorkerStatus msg( available );
+                msg.Send( m_Connection );
+                DisconnectFromCoordinator();
+            }
+            m_TimerLastUpdate.Start();
+        }
+    }
+}
+
+// SetAvailabilityToBrokerage
+//------------------------------------------------------------------------------
+void WorkerBrokerageServer::SetAvailabilityToBrokerage( bool available )
+{
     UpdateBrokerageFilePath();
 
     if ( available )

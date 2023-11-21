@@ -36,6 +36,9 @@
             "RequestFile",
             "File",
             "JobResultCompressed",
+            "RequestWorkerList",
+            "WorkerList",
+            "SetWorkerStatus"
         };
         static_assert( ( sizeof( msgNames ) / sizeof(const char *) ) == Protocol::NUM_MESSAGES, "msgNames item count doesn't match NUM_MESSAGES" );
 
@@ -195,6 +198,32 @@ Protocol::MsgFile::MsgFile( uint64_t toolId, uint32_t fileId )
     : Protocol::IMessage( Protocol::MSG_FILE, sizeof( MsgFile ), true )
     , m_FileId( fileId )
     , m_ToolId( toolId )
+{
+}
+
+// MsgRequestWorkerList
+//------------------------------------------------------------------------------
+Protocol::MsgRequestWorkerList::MsgRequestWorkerList()
+    : Protocol::IMessage( Protocol::MSG_REQUEST_WORKER_LIST, sizeof( MsgRequestWorkerList ), false )
+    , m_ProtocolVersion( PROTOCOL_VERSION_MAJOR )
+    , m_Platform(Env::GetPlatform())
+{
+}
+
+// MsgWorkerList
+//------------------------------------------------------------------------------
+Protocol::MsgWorkerList::MsgWorkerList()
+    : Protocol::IMessage( Protocol::MSG_WORKER_LIST, sizeof( MsgWorkerList ), true )
+{
+}
+
+// MsgSetWorkerStatus
+//------------------------------------------------------------------------------
+Protocol::MsgSetWorkerStatus::MsgSetWorkerStatus( bool isAvailable )
+    : Protocol::IMessage( Protocol::MSG_SET_WORKER_STATUS, sizeof( MsgSetWorkerStatus ), false )
+    , m_IsAvailable( isAvailable )
+    , m_ProtocolVersion( PROTOCOL_VERSION_MAJOR )
+    , m_Platform(Env::GetPlatform())
 {
 }
 

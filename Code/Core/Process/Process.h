@@ -10,6 +10,18 @@
 //------------------------------------------------------------------------------
 class AString;
 
+#if defined( __APPLE__ )
+    #if defined( __OBJC__ )
+        #import <Cocoa/Cocoa.h>
+    #else
+        class NSTask;
+        class NSData;
+        class NSPipe;
+    #endif
+
+    #define APPLE_PROCESS_USE_NSTASK
+#endif
+
 // Process
 //------------------------------------------------------------------------------
 class Process
@@ -49,6 +61,8 @@ private:
                                       const uint64_t processCreationTime );
         [[nodiscard]] static uint64_t   GetProcessCreationTime( const void * hProc ); // HANDLE
         void                    Read( void * handle, AString & buffer );
+    #elif defined( __APPLE__ ) && defined( APPLE_PROCESS_USE_NSTASK )
+        void Read( NSData * availableData, AString & buffer );
     #else
         void                    Read( int handle, AString & buffer );
     #endif
@@ -79,13 +93,20 @@ private:
         void * m_StdInWrite;    // HANDLE
     #endif
 
-    #if defined( __LINUX__ ) || defined( __APPLE__ )
+    #if defined( __LINUX__ ) || ( defined( __APPLE__) && !defined( APPLE_PROCESS_USE_NSTASK ) )
         int m_ChildPID;
         mutable bool m_HasAlreadyWaitTerminated;
         mutable int m_ReturnStatus;
         int m_StdOutRead;
         int m_StdErrRead;
     #endif
+ 
+    #if defined( __APPLE__) && defined( APPLE_PROCESS_USE_NSTASK )
+        NSTask * m_Task;
+        NSPipe * m_StdOutRead;
+        NSPipe * m_StdErrRead;
+    #endif
+
     bool m_HasAborted;
     const volatile bool * m_MainAbortFlag; // This member is set when we must cancel processes asap when the main process dies.
     const volatile bool * m_AbortFlag;

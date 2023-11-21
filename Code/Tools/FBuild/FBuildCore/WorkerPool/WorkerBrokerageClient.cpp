@@ -7,6 +7,7 @@
 
 // FBuildCore
 #include "Tools/FBuild/FBuildCore/FLog.h"
+#include "Tools/FBuild/FBuildCore/Protocol/Protocol.h"
 
 // Core
 #include "Core/Env/Env.h"
@@ -14,6 +15,9 @@
 #include "Core/FileIO/PathUtils.h"
 #include "Core/Network/Network.h"
 #include "Core/Profile/Profile.h"
+#include "Core/Tracing/Tracing.h"
+#include "Core/Strings/AStackString.h"
+#include "Core/Network/TCPConnectionPool.h"
 
 // CONSTRUCTOR
 //------------------------------------------------------------------------------
@@ -42,16 +46,79 @@ void WorkerBrokerageClient::FindWorkers( Array< AString > & outWorkerList )
         }
     }
 
-    // check for workers through brokerage
-
     // Init the brokerage
     InitBrokerage();
-    if ( m_BrokerageRoots.IsEmpty() )
+
+    if ( m_BrokerageRoots.IsEmpty() && m_CoordinatorAddress.IsEmpty() )
     {
-        FLOG_WARN( "No brokerage root; did you set FASTBUILD_BROKERAGE_PATH?" );
         return;
     }
 
+    if ( !m_CoordinatorAddress.IsEmpty() )
+        FindWorkerFromCoordinator( outWorkerList );
+    else if( !m_BrokerageRoots.IsEmpty() )
+        FindWorkerFromBrokerage( outWorkerList );
+}
+
+
+// FindWorkerFromCoordinator
+//------------------------------------------------------------------------------
+void WorkerBrokerageClient::FindWorkerFromCoordinator( Array< AString > & outWorkerList )
+{
+   if ( ConnectToCoordinator() )
+    {
+        m_WorkerListUpdateReady = false;
+
+        OUTPUT( "Requesting worker list fro Corrdinator\n");
+
+        Protocol::MsgRequestWorkerList msg;
+        msg.Send( m_Connection );
+
+        while ( m_WorkerListUpdateReady == false )
+        {
+            Thread::Sleep( 1 );
+        }
+
+        DisconnectFromCoordinator();
+
+        OUTPUT( "Worker list received: %u workers\n", (uint32_t)m_WorkerListUpdate.GetSize() );
+        if ( m_WorkerListUpdate.GetSize() == 0 )
+        {
+            FLOG_WARN( "No workers received from coordinator" );
+            return; // no files found
+        }
+
+        // presize
+        if ( ( outWorkerList.GetSize() + m_WorkerListUpdate.GetSize() ) > outWorkerList.GetCapacity() )
+        {
+            outWorkerList.SetCapacity( outWorkerList.GetSize() + m_WorkerListUpdate.GetSize() );
+        }
+
+        // convert worker strings
+        const uint32_t * const end = m_WorkerListUpdate.End();
+        for ( uint32_t * it = m_WorkerListUpdate.Begin(); it != end; ++it )
+        {
+            AStackString<> workerName;
+            TCPConnectionPool::GetAddressAsString( *it, workerName );
+            if ( workerName.CompareI( m_HostName ) != 0 && workerName.CompareI( "127.0.0.1" ) )
+            {
+                outWorkerList.Append( workerName );
+            }
+            else
+            {
+                OUTPUT( "Skipping woker %s\n", workerName.Get() );
+            }
+        }
+
+        m_WorkerListUpdate.Clear();
+    }
+}
+
+// FindWorkers
+//------------------------------------------------------------------------------
+void WorkerBrokerageClient::FindWorkerFromBrokerage( Array< AString > & outWorkerList )
+{
+    // check for workers through brokerage
     Array< AString > results( 256, true );
     for( AString& root : m_BrokerageRoots )
     {
@@ -93,6 +160,14 @@ void WorkerBrokerageClient::FindWorkers( Array< AString > & outWorkerList )
 
         outWorkerList.Append( workerName );
     }
+}
+
+// UpdateWorkerList
+//------------------------------------------------------------------------------
+void WorkerBrokerageClient::UpdateWorkerList( Array< uint32_t > &workerListUpdate )
+{
+    m_WorkerListUpdate.Swap( workerListUpdate );
+    m_WorkerListUpdateReady = true;
 }
 
 //------------------------------------------------------------------------------

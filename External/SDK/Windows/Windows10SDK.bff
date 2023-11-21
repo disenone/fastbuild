@@ -24,11 +24,11 @@
         //
         // Failed
         //
-        Print( '-----------------------------------------------------------------------' )
-        Print( '- Unable to auto-detect Windows10SDK - please specify installation manually -' )
-        Print( '-----------------------------------------------------------------------' )
-        .Windows10_SDKBasePath        = .Set_Path_Here    // <-- Set path here
-        .Windows10_SDKVersion         = .Set_Version_Here // <-- Set version here
+        //Print( '-----------------------------------------------------------------------' )
+        //Print( '- Unable to auto-detect Windows10SDK - please specify installation manually -' )
+        //Print( '-----------------------------------------------------------------------' )
+        .Windows10_SDKBasePath        = 'C:\Program Files (x86)\Windows Kits/10'    // <-- Set path here
+        .Windows10_SDKVersion         = '10.0.19041.0' // <-- Set version here
     #endif
 #endif
 

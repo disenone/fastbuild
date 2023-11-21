@@ -57,12 +57,12 @@
                         //
                         // Failed
                         //
-                        Print( '-----------------------------------------------------------------------' )
-                        Print( '- Unable to auto-detect VS2019 - please specify installation manually -' )
-                        Print( '-----------------------------------------------------------------------' )
-                        .VS2019_BasePath        = .Set_Path_Here    // <-- Set path here
-                        .VS2019_Version         = .Set_Version_Here // <-- Set version here
-                        .VS2019_MSC_VER         = .Set_MSC_VER_Here // <-- Set MSC_VER here
+                        //Print( '-----------------------------------------------------------------------' )
+                        //Print( '- Unable to auto-detect VS2019 - please specify installation manually -' )
+                        //Print( '-----------------------------------------------------------------------' )
+                        .VS2019_BasePath        = 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\VC'    // <-- Set path here
+                        .VS2019_Version         = '14.29.30133' // <-- Set version here
+                        .VS2019_MSC_VER         = '1929' // <-- Set MSC_VER here
                     #endif
                 #endif
             #endif
@@ -142,6 +142,7 @@ Compiler( 'Compiler-VS2019-x64' )
                                     + ' /wd5039' // '%s': pointer or reference to potentially throwing function passed to extern C function under -EHc. Undefined behavior may occur if this function throws an exception.
                                     + ' /wd5045' // Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
                                     + ' /wd5220' // '%s': a non-static data member with a volatile qualified type no longer implies that compiler generated copy/move constructors and copy/move assignment operators are not trivial
+                                    + ' /Wv:18'  // a non-static data member with a volatile qualified type no longer implies that compiler generated copy/move constructors and copy/move assignment operators are not trivial
 
                                     // Include Paths
                                     + ' /I"./"'

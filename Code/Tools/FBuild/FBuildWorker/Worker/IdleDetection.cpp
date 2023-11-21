@@ -24,6 +24,9 @@
 #endif
 #if defined( __OSX__ )
     #include <mach/mach_host.h>
+    #include <sys/sysctl.h>
+    #include <stdlib.h>
+    #include <stdio.h>
 #endif
 
 // Defines
@@ -189,7 +192,7 @@ bool IdleDetection::IsIdleInternal( uint32_t idleThresholdPercent, float & idleC
         VERIFY( host_statistics( mach_host_self(), HOST_CPU_LOAD_INFO, (host_info_t)&cpuInfo, &count ) == KERN_SUCCESS );
         outIdleTime = cpuInfo.cpu_ticks[ CPU_STATE_IDLE ];
         outKernTime = cpuInfo.cpu_ticks[ CPU_STATE_SYSTEM ];
-        outUserTime = cpuInfo.cpu_ticks[ CPU_STATE_USER ];
+        outUserTime = cpuInfo.cpu_ticks[ CPU_STATE_USER ] + cpuInfo.cpu_ticks[ CPU_STATE_NICE ];
     #elif defined( __LINUX__ )
         // Read first line of /proc/stat
         AStackString< 1024 > procStat;
@@ -252,10 +255,76 @@ bool IdleDetection::IsIdleInternal( uint32_t idleThresholdPercent, float & idleC
             outUserTime = 0;
         }
     #elif defined( __OSX__ )
-        // TODO:OSX Implement GetProcecessTime
-        (void)pi;
-        outKernTime = 0;
-        outUserTime = 0;
+        Process p;
+        bool spawnOK = p.Spawn( "/bin/ps",
+                               AStackString<>().Format( "-o time,utime -p %u", pi.m_PID ).Get(),
+                               nullptr,
+                               nullptr );
+        if ( spawnOK )
+        {
+            // capture all of the stdout and stderr
+            AutoPtr< char > memOut;
+            AutoPtr< char > memErr;
+            uint32_t memOutSize = 0;
+            uint32_t memErrSize = 0;
+            p.ReadAllData( memOut, &memOutSize, memErr, &memErrSize );
+
+            // Get result
+            int result = p.WaitForExit();
+            if ( p.HasAborted() || result != 0 )
+            {
+                // Process may have exited, so handle that gracefully
+                outKernTime = 0;
+                outUserTime = 0;
+                return;
+            }
+
+            // Find total time and user time strings in the output
+            char * outString = memOut.Get();
+            while ( *outString && ( *outString < '0' || *outString > '9' ) )
+            {
+                ++outString;
+            }
+
+            char * totalTimeString = outString;
+
+            // Find the end of the total time string and replace '-' with ':' for easier parsing in ConvertTimeString
+            while ( *outString && *outString != ' ' )
+            {
+                if ( *outString == '-' )
+                {
+                    *outString = ':';
+                }
+                ++outString;
+            }
+            *outString++ = 0;
+
+            while ( *outString && ( *outString < '0' || *outString > '9' ) )
+            {
+                ++outString;
+            }
+
+            char * userTimeString = outString;
+
+            // Find the end of the user time string and replace '-' with ':' for easier parsing in ConvertTimeString
+            while ( *outString && *outString != ' ' && *outString != '\n' )
+            {
+                if ( *outString == '-' )
+                {
+                    *outString = ':';
+                }
+                ++outString;
+            }
+            *outString = 0;
+
+            outUserTime = ConvertTimeString( AString( userTimeString ) );
+            outKernTime = ConvertTimeString( AString( totalTimeString ) ) - outUserTime;
+        }
+        else
+        {
+            // Something is terribly wrong
+            ASSERT( false && "Failed to get process information using '/bin/ps -o time,utime -p <PID>'" );
+        }
     #elif defined( __LINUX__ )
         // Read first line of /proc/<pid>/stat for the process
         AStackString< 1024 > processInfo;
@@ -340,7 +409,46 @@ void IdleDetection::UpdateProcessList()
         }
         CloseHandle( hSnapShot );
     #elif defined( __OSX__ )
-        // TODO:OSX Implement FindNewProcesses
+        int32_t mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0 };
+        size_t bufferSize = 0;
+        if ( sysctl( mib, 4, NULL, &bufferSize, NULL, 0 ) != -1 && bufferSize > 0 )
+        {
+            struct kinfo_proc * allProcesses = ( struct kinfo_proc * )ALLOC( bufferSize );
+            if ( allProcesses )
+            {
+                if ( sysctl( mib, 4, allProcesses, &bufferSize, NULL, 0 ) != -1 )
+                {
+                    const uint32_t procCount = ( uint32_t)( bufferSize / sizeof( struct kinfo_proc ) );
+                    for ( uint32_t index = 0; index < procCount; ++index )
+                    {
+                        const uint32_t parentPID = allProcesses[index].kp_eproc.e_ppid;
+
+                        // is process a child of one we care about?
+                        if ( m_ProcessesInOurHierarchy.Find( parentPID ) )
+                        {
+                            const uint32_t pid = allProcesses[index].kp_proc.p_pid;
+                            ProcessInfo * info = m_ProcessesInOurHierarchy.Find( pid );
+                            if ( info )
+                            {
+                                // an existing process that is still alive
+                                info->m_AliveValue = sAliveValue; // still active
+                            }
+                            else
+                            {
+                                // track new process
+                                ProcessInfo newProcess;
+                                newProcess.m_PID = pid;
+                                newProcess.m_AliveValue = sAliveValue;
+                                newProcess.m_LastTime = 0;
+                                m_ProcessesInOurHierarchy.Append( newProcess );
+                            }
+                        }
+                    }
+                }
+
+                FREE(allProcesses);
+            }
+        }
     #elif defined( __LINUX__ )
         // Each process has a directory in /proc/
         // The name of the dir is the pid
@@ -488,6 +596,32 @@ void IdleDetection::UpdateProcessList()
         ASSERT( false && "Unexpected proc file size");
         outProcessInfoString.Clear();
         return false;
+    }
+#endif
+
+// ConvertTimeString
+//------------------------------------------------------------------------------
+
+#if defined( __OSX__ )
+    /*static*/ uint64_t IdleDetection::ConvertTimeString( const AString & timeString )
+    {
+        Array< AString > tokens( 4, true );
+        timeString.Tokenize( tokens, ':' );
+
+        if ( tokens.GetSize() > 0 )
+        {
+            float values[4] = { 0 }; // 0: days, 1: hours, 2: minutes, 3: seconds
+            values[3] = atof( tokens[tokens.GetSize() - 1].Get() );
+
+            for ( int i = tokens.GetSize() - 2, j = 2; i >= 0; --i, --j )
+            {
+                values[j] = atof( tokens[i].Get() );
+            }
+
+            return ( uint64_t )( ( values[0] * 24.0f * 60.0f * 60.0f + values[1] * 60.0f * 60.0f + values[2] * 60.0f + values[3] ) * 100.0f );
+        }
+
+        return 0;
     }
 #endif
 

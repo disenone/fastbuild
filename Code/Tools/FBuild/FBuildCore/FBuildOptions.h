@@ -104,6 +104,12 @@ public:
     uint32_t    m_NumWorkerThreads                  = 0; // True default detected in constructor
     AString     m_ConfigFile;
 
+    // Coordinator ip
+    AString m_CoordinatorAddress;
+
+    // Brokerage path
+    AString m_BrokeragePath;
+
     inline uint32_t GetWorkingDirHash() const                   { return m_WorkingDirHash; }
     inline const AString & GetMainProcessMutexName() const      { return m_ProcessMutexName; }
     inline const AString & GetFinalProcessMutexName( ) const    { return m_FinalProcessMutexName; }

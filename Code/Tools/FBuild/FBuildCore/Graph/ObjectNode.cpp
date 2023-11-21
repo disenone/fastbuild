@@ -237,7 +237,7 @@ ObjectNode::~ObjectNode()
     const bool useCache = ShouldUseCache();
     const bool useDist = m_CompilerFlags.IsDistributable() && m_AllowDistribution && FBuild::Get().GetOptions().m_AllowDistributed;
     const bool useSimpleDist = GetCompiler()->SimpleDistributionMode();
-    bool usePreProcessor = !useSimpleDist && ( useCache || useDist || IsGCC() || IsSNC() || IsClang() || IsClangCl() || IsCodeWarriorWii() || IsGreenHillsWiiU() || IsVBCC() || IsOrbisWavePSSLC() );
+    bool usePreProcessor = !useSimpleDist && ( useCache || useDist || IsGCC() || IsSNC() || (IsClang() && useDist) || IsClangCl() || IsCodeWarriorWii() || IsGreenHillsWiiU() || IsVBCC() || IsOrbisWavePSSLC() );
     if ( GetDedicatedPreprocessor() )
     {
         usePreProcessor = true;
@@ -2292,6 +2292,7 @@ bool ObjectNode::CompileHelper::SpawnCompiler( Job * job,
         environmentString = compilerNode->GetEnvironmentString();
     }
 
+    DEBUGSPAM("SpawnCompiler: %s, %s, %s, %s", compiler.Get(), fullArgs.GetFinalArgs().Get(), workingDir, environmentString);
     // spawn the process
     if ( false == m_Process.Spawn( compiler.Get(),
                                    fullArgs.GetFinalArgs().Get(),

@@ -34,6 +34,8 @@ public:
 
     void SetWantToQuit() { m_WantToQuit = true; }
 
+    void SetCoordinatorAddress(const AString & address) { m_WorkerBrokerage.SetCoordinatorAddress(address); }
+    void SetBrokeragePath(const AString & path) { m_WorkerBrokerage.SetBrokeragePath(path); }
 private:
     static uint32_t WorkThreadWrapper( void * userData );
     uint32_t WorkThread();

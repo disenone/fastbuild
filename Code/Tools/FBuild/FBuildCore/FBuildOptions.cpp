@@ -464,6 +464,16 @@ FBuildOptions::OptionsResult FBuildOptions::ProcessCommandLine( int argc, char *
                     continue;
                 }
             #endif
+            else if (thisArg.BeginsWith("-coordinator="))
+            {
+                m_CoordinatorAddress = thisArg.Get() + strlen("-coordinator=");
+                continue;
+            }
+            else if (thisArg.BeginsWith("-brokerage="))
+            {
+                m_BrokeragePath = thisArg.Get() + strlen("-brokerage=");
+                continue;
+            }
 
             // can't use FLOG_ERROR as FLog is not initialized
             OUTPUT( "FBuild: Error: Unknown argument '%s'\n", thisArg.Get() );
@@ -692,6 +702,10 @@ void FBuildOptions::DisplayHelp( const AString & programName ) const
             "                   termination from Visual Studio.\n"
             " -wsl <wslPath> <args...>\n"
             "                   (Windows) Forward to the Windows Subsystem for Linux\n"
+            " -coordinator=<ip address>\n"
+            "        - Set FBuildCoordinator ip address.\n"
+            " -brokerage=<path>\n"
+            "        - Set Brokerage path.\n"
             "--------------------------------------------------------------------------------\n" );
 }
 
