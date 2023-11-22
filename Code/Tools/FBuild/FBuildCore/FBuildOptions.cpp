@@ -703,9 +703,9 @@ void FBuildOptions::DisplayHelp( const AString & programName ) const
             " -wsl <wslPath> <args...>\n"
             "                   (Windows) Forward to the Windows Subsystem for Linux\n"
             " -coordinator=<ip address>\n"
-            "        - Set FBuildCoordinator ip address.\n"
+            "                   Set FBuildCoordinator ip address.\n"
             " -brokerage=<path>\n"
-            "        - Set Brokerage path.\n"
+            "                   Set Brokerage path.\n"
             "--------------------------------------------------------------------------------\n" );
 }
 

@@ -20,6 +20,11 @@ public:
     WorkerBrokerage();
     virtual ~WorkerBrokerage();
 
+    const AString & GetWorkingPath() const 
+    { 
+        if ( !m_CoordinatorAddress.IsEmpty() ) return m_CoordinatorAddress;
+        return m_BrokerageRootPaths;
+    }
     const AString & GetBrokerageRootPaths() const { return m_BrokerageRootPaths; }
     const AString & GetCoordinatorAddress() const { return m_CoordinatorAddress; }
     void SetCoordinatorAddress(const AString & address) { m_CoordinatorAddress = address; }
