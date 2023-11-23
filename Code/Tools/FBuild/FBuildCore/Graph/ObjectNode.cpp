@@ -1799,6 +1799,46 @@ bool ObjectNode::BuildArgs( const Job * job, Args & fullArgs, Pass pass, bool us
             continue;
         }
 
+        // %5 -> FirstExtraFile
+        {
+            const char * const found = token.Find( "%5" );
+            if ( found )
+            {
+                AStackString<> extraFile;
+                if ( job->IsLocal() == false )
+                {
+                    job->GetToolManifest()->GetRemoteFilePath( 1, extraFile );
+                }
+
+                fullArgs += AStackString<>( token.Get(), found );
+                fullArgs += job->IsLocal() ? GetCompiler()->GetExtraFile( 0 ) : extraFile;
+                fullArgs += AStackString<>( found + 2, token.GetEnd() );
+                fullArgs.AddDelimiter();
+                continue;
+            }
+        }
+
+
+        // %CLFilterDependenciesOutput -> file name Unreal Engine's cl-filter -dependencies param
+        // MSVC's /showIncludes option doesn't output anything when compiling a preprocessed file,
+        // so in that case we change the file name so that it doesn't override the file generated
+        // during preprocessing pass.
+        {
+            const char * const found = token.Find( "%CLFilterDependenciesOutput" );
+            if ( found )
+            {
+                AString nameWithoutExtension( m_Name );
+                PathUtils::StripFileExtension( nameWithoutExtension );
+
+                fullArgs += AStackString<>( token.Get(), found );
+                fullArgs += nameWithoutExtension;
+                fullArgs += pass == PASS_COMPILE_PREPROCESSED ? ".empty" : ".txt";
+                fullArgs += AStackString<>( found + 27, token.GetEnd() );
+                fullArgs.AddDelimiter();
+                continue;
+            }
+        }
+
         // untouched token
         fullArgs += token;
         fullArgs.AddDelimiter();
