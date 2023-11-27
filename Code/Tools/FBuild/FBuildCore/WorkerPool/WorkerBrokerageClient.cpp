@@ -94,19 +94,24 @@ void WorkerBrokerageClient::FindWorkerFromCoordinator( Array< AString > & outWor
             outWorkerList.SetCapacity( outWorkerList.GetSize() + m_WorkerListUpdate.GetSize() );
         }
 
-        // convert worker strings
+        // Get addresses for the local host
+        StackArray<AString> localAddresses;
+        Network::GetIPv4Addresses( localAddresses );
+
         const uint32_t * const end = m_WorkerListUpdate.End();
         for ( uint32_t * it = m_WorkerListUpdate.Begin(); it != end; ++it )
         {
             AStackString<> workerName;
             TCPConnectionPool::GetAddressAsString( *it, workerName );
-            if ( workerName.CompareI( m_HostName ) != 0 && workerName.CompareI( "127.0.0.1" ) )
+
+            // Filter out local addresses
+            if ( localAddresses.Find( workerName ) || workerName.CompareI( m_HostName ) == 0 || workerName.CompareI( "127.0.0.1" ) == 0)
             {
-                outWorkerList.Append( workerName );
+                OUTPUT( "Skipping local woker: %s\n", workerName.Get() );
             }
             else
             {
-                OUTPUT( "Skipping woker %s\n", workerName.Get() );
+                outWorkerList.Append( workerName );
             }
         }
 
