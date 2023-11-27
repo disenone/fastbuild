@@ -116,6 +116,13 @@ FBuildOptions::OptionsResult FBuildOptions::ProcessCommandLine( int argc, char *
                 m_UseCacheWrite = true;
                 continue;
             }
+            else if ( thisArg == "-nocache" )
+            {
+                m_NoCache = true;
+                m_UseCacheRead = false;
+                m_UseCacheWrite = false;
+                continue;
+            }
             else if ( thisArg == "-cacheread" )
             {
                 m_UseCacheRead = true;
@@ -511,7 +518,7 @@ FBuildOptions::OptionsResult FBuildOptions::ProcessCommandLine( int argc, char *
     }
 
     // cache mode environment variable (if not supplied on cmd line)
-    if ( ( m_UseCacheRead == false ) && ( m_UseCacheWrite == false ) )
+    if ( ( m_UseCacheRead == false ) && ( m_UseCacheWrite == false ) && (m_NoCache == false))
     {
         AStackString<> cacheMode;
         if ( Env::GetEnvVariable( "FASTBUILD_CACHE_MODE", cacheMode ) )
@@ -640,6 +647,7 @@ void FBuildOptions::DisplayHelp( const AString & programName ) const
             "Options:\n"
             " -cache[read|write]\n"
             "                   Control use of the build cache.\n"
+            " -nocache          Do not use cache.\n"
             " -cachecompressionlevel <level>\n"
             "                   Control compression for cache artifacts (default: -1)\n"
             "                   - <= -1 : less compression, with -128 being the lowest\n"
