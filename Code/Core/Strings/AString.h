@@ -93,6 +93,7 @@ public:
     // Format
     AString &                   Format( MSVC_SAL_PRINTF const char * fmtString, ... ) FORMAT_STRING( 2, 3 );
     AString &                   VFormat( const char * fmtString, va_list arg );
+    AString &                   FormatTime( const char * fmtString, int64_t timestamp ); 
 
     // ScanF
     [[nodiscard]] int32_t           Scan( MSVC_SAL_SCANF const char * fmtString, ... ) const SCAN_STRING( 2, 3 );

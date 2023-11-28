@@ -6,11 +6,13 @@
 #include "AString.h"
 #include "AStackString.h"
 #include "Core/Math/Conversions.h"
+#include "Core/Tracing/Tracing.h"
 
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctime>
 
 // Static
 //------------------------------------------------------------------------------
@@ -271,6 +273,34 @@ loop:
     {
         FREE( buffer );
     }
+
+    return *this;
+}
+
+// FormatTime
+//------------------------------------------------------------------------------
+AString & AString::FormatTime( const char * fmtString, int64_t timestamp )
+{
+    // try to work entirely on the stack
+    const uint32_t STACK_BUFFER_SIZE( KILOBYTE );
+    char stackBuffer[ STACK_BUFFER_SIZE ];
+    char * buffer = stackBuffer;
+    size_t bufferSize = STACK_BUFFER_SIZE;
+
+    #if defined( __WINDOWS__ )
+        std::tm timeinfo;
+        if( _localtime64_s( &timeinfo, &timestamp ) != 0)
+        {
+            return *this;
+        }
+        std::tm * ptimeinfo = &timeinfo;
+    #else
+        std::tm * ptimeinfo = std::localtime( &timestamp );
+        if ( timeinfo == nullptr ) return *this;
+    #endif    
+    
+    size_t len = std::strftime(buffer, bufferSize, fmtString, ptimeinfo);
+    Assign( buffer, buffer + len );
 
     return *this;
 }

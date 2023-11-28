@@ -8,6 +8,7 @@
 
 #include "Core/Profile/Profile.h"
 #include "Core/Strings/AStackString.h"
+#include "Core/Time/Time.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -123,6 +124,25 @@
     va_list args;
     va_start( args, fmtString );
     buffer.VFormat( fmtString, args );
+    va_end( args );
+
+    Output( buffer.Get() );
+}
+
+// OutputFormatWithNow
+//------------------------------------------------------------------------------
+/*static*/ void Tracing::OutputFormatWithNow( MSVC_SAL_PRINTF const char * fmtString, ... )
+{
+    AStackString< 8192 > buffer;
+    AStackString<> nowStr;
+
+    AStackString<> fmtStringWithNow;
+    fmtStringWithNow.FormatTime(OUTPUT_NOW_FORMAT, Time::GetNow());
+    fmtStringWithNow += fmtString;
+
+    va_list args;
+    va_start( args, fmtString );
+    buffer.VFormat(fmtStringWithNow.Get(), args );
     va_end( args );
 
     Output( buffer.Get() );

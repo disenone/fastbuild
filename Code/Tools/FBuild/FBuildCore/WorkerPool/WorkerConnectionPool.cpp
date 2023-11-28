@@ -14,6 +14,7 @@
 #include "Core/Tracing/Tracing.h"
 #include "Core/FileIO/ConstMemoryStream.h"
 #include "Core/FileIO/MemoryStream.h"
+#include "Core/Time/Time.h"
 
 // CONSTRUCTOR
 //------------------------------------------------------------------------------
@@ -114,14 +115,48 @@ void WorkerConnectionPool::OnDisconnected( const ConnectionInfo * )
 {
 }
 
+// output workers
+//------------------------------------------------------------------------------
+void GetWorkersString(const Array< uint32_t > & workers, AStackString<> & ret)
+{
+    for ( size_t i=0; i<workers.GetSize(); ++i )
+    {
+        AStackString<> remoteAddr;
+        TCPConnectionPool::GetAddressAsString( workers[i], remoteAddr );
+        if(ret.GetLength() > 0)
+            ret += ", ";
+        ret += remoteAddr;
+    }
+}
+
+void GetWorkersString(const Array< WorkerInfo > & workers, AStackString<> & ret)
+{
+    for ( size_t i=0; i<workers.GetSize(); ++i )
+    {
+        AStackString<> remoteAddr;
+        TCPConnectionPool::GetAddressAsString( workers[i].m_Address, remoteAddr );
+        if(ret.GetLength() > 0)
+            ret += ", ";
+        ret += remoteAddr;
+    }
+}
+
+// OutputCurrentWorkers
+//------------------------------------------------------------------------------
+void WorkerConnectionPool::OutputCurrentWorkers()
+{
+    AStackString<> list;
+    GetWorkersString( m_Workers, list );
+    OUTPUT_WITH_NOW( "current [%d] workers: [%s]\n", m_Workers.GetSize(), list.Get() );
+}
+
 // Process ( MsgRequestWorkerList )
 //------------------------------------------------------------------------------
 void WorkerConnectionPool::Process( const ConnectionInfo * connection, const Protocol::MsgRequestWorkerList * msg )
 {
-    OUTPUT( "Process ( MsgRequestWorkerList )\n");
-
     MutexHolder mh( m_Mutex );
-    
+    ClearTimeoutWorkerWithoutMutex();
+
     MemoryStream ms;
     const size_t numWorkers( m_Workers.GetSize() );
     ms.Write( (uint32_t)numWorkers );
@@ -135,25 +170,19 @@ void WorkerConnectionPool::Process( const ConnectionInfo * connection, const Pro
 
     Protocol::MsgWorkerList resultMsg;
     resultMsg.Send( connection, ms );
-}
 
-void GetWorkersString(const Array< uint32_t > & workers, AStackString<> & ret)
-{
-    for ( size_t i=0; i<workers.GetSize(); ++i )
-    {
-        AStackString<> remoteAddr;
-        TCPConnectionPool::GetAddressAsString( workers[i], remoteAddr );
-        if(ret.GetLength() > 0)
-            ret += ", ";
-        ret += remoteAddr;
-    }
+    AStackString<> remoteAddr;
+    TCPConnectionPool::GetAddressAsString( connection->GetRemoteAddress(), remoteAddr );
+    
+    OUTPUT_WITH_NOW( "%s request worker list\n", remoteAddr.Get());
+    OutputCurrentWorkers();
 }
 
 // Process ( MsgWorkerList )
 //------------------------------------------------------------------------------
 void WorkerConnectionPool::Process( const ConnectionInfo * connection, const Protocol::MsgWorkerList * /*msg*/, const void * payload, size_t payloadSize )
 {
-    OUTPUT( "Process ( MsgWorkerList )\n");
+    OUTPUT( "Get Worker List from Coordinator.\n");
 
     ConstMemoryStream ms( payload, payloadSize );
 
@@ -193,7 +222,7 @@ void WorkerConnectionPool::Process( const ConnectionInfo * connection, const Pro
         {
             AStackString<> remoteAddr;
             TCPConnectionPool::GetAddressAsString( workerAddress, remoteAddr );
-            OUTPUT( "New worker available: %s\n", remoteAddr.Get() );
+            OUTPUT_WITH_NOW( "New worker available: %s\n", remoteAddr.Get() );
             m_Workers.Append( WorkerInfo( workerAddress, msg->GetProtocolVersion(), msg->GetPlatform() ) );
             need_log = true;
         }
@@ -203,19 +232,52 @@ void WorkerConnectionPool::Process( const ConnectionInfo * connection, const Pro
         if( m_Workers.FindAndErase( workerAddress ) ) need_log = true;
     }
 
+    WorkerInfo * info = m_Workers.Find(workerAddress);
+    if ( info ) info->m_LastHeartTick = Time::GetNow();
+    need_log = ClearTimeoutWorkerWithoutMutex() || need_log;
+
     if ( need_log )
     {
-        Array< uint32_t > workers;
-        workers.SetCapacity(m_Workers.GetSize());
-        for ( const auto & worder_info: m_Workers)
-        {
-            workers.Append(worder_info.m_Address);
-        }
-
-        AStackString<> list;
-        GetWorkersString( workers, list );
-        OUTPUT( "current [%d] workers: [%s]\n", workers.GetSize(), list.Get() );
+        OutputCurrentWorkers();
     }
+}
+
+// ClearTimeoutWorker
+//------------------------------------------------------------------------------
+bool WorkerConnectionPool::ClearTimeoutWorker()
+{
+    MutexHolder mh( m_Mutex );
+    return ClearTimeoutWorkerWithoutMutex();
+}
+
+// ClearTimeoutWorker
+//------------------------------------------------------------------------------
+bool WorkerConnectionPool::ClearTimeoutWorkerWithoutMutex()
+{
+    const int16_t timeout = 30;
+    Array< WorkerInfo > newWorkers;
+    int64_t now = Time::GetNow();
+    bool hasTimeout = false;
+
+    for ( const auto & worker_info: m_Workers )
+    {
+        if ( now - worker_info.m_LastHeartTick < 30 )
+        {
+            newWorkers.Append(worker_info);
+        }
+        else
+        {
+            hasTimeout = true;
+            AStackString<> remoteAddr;
+            TCPConnectionPool::GetAddressAsString( worker_info.m_Address, remoteAddr );
+            OUTPUT_WITH_NOW( "worker timeout: %s\n", remoteAddr.Get() );
+        }
+    }
+
+    m_Workers.Swap(newWorkers);
+
+    if ( hasTimeout ) OutputCurrentWorkers();
+    return hasTimeout;
 }
 
 //------------------------------------------------------------------------------

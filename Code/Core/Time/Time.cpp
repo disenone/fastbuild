@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 #include "Time.h"
 #include "Core/Env/Assert.h"
+#include <ctime>
 
 // system
 #if defined( __WINDOWS__ )
@@ -49,4 +50,12 @@ uint64_t Time::FileTimeToSeconds( uint64_t filetime )
         return ( filetime / 1000000000ULL );
     #endif
 }
+
+// GetNow
+//------------------------------------------------------------------------------
+time_t Time::GetNow()
+{
+    return std::time(nullptr);
+}
+
 //------------------------------------------------------------------------------

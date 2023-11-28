@@ -56,18 +56,26 @@ uint32_t Coordinator::WorkThread()
     OUTPUT( "FBuildCoordinator - " FBUILD_VERSION_STRING "\n" );
 
     // start listening
-    OUTPUT( "Listening on port %u\n", Protocol::COORDINATOR_PORT );
+    OUTPUT_WITH_NOW( "Listening on port %u\n", Protocol::COORDINATOR_PORT );
     if ( m_ConnectionPool->Listen( Protocol::COORDINATOR_PORT ) == false )
     {
-        OUTPUT( "Failed to listen on port %u.  Check port is not in use.\n", Protocol::COORDINATOR_PORT );
+        OUTPUT_WITH_NOW( "Failed to listen on port %u.  Check port is not in use.\n", Protocol::COORDINATOR_PORT );
         return (uint32_t)-3;
     }
+    m_ConnectionPool->OutputCurrentWorkers();
 
+    Timer timer;
     for(;;)
     {
         PROFILE_SYNCHRONIZE
 
         Thread::Sleep( 500 );
+
+        if ( timer.GetElapsed() >= 10 )
+        {
+            m_ConnectionPool->ClearTimeoutWorker();
+            timer.Start();
+        }
     }
 
     // return 0;

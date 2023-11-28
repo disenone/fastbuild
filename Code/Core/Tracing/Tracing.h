@@ -19,7 +19,9 @@
     #define WARNING( ... )      Tracing::DoNothing()
 #endif
 #define OUTPUT( ... )           Tracing::OutputFormat( __VA_ARGS__ )
+#define OUTPUT_WITH_NOW( ... )  Tracing::OutputFormatWithNow( __VA_ARGS__ )
 #define FATALERROR( ... )       Tracing::FatalErrorFormat( __VA_ARGS__ )
+#define OUTPUT_NOW_FORMAT       "[%Y-%m-%d-%H:%M:%S] "
 
 // Tracing
 //------------------------------------------------------------------------------
@@ -36,6 +38,7 @@ public:
     #endif
     static void Output( const char * message );
     static void OutputFormat( MSVC_SAL_PRINTF const char * fmtString, ... ) FORMAT_STRING( 1, 2 );
+    static void OutputFormatWithNow( MSVC_SAL_PRINTF const char * fmtString, ... ) FORMAT_STRING( 1, 2 );
     static void FatalError( const char * message );
     static void FatalErrorFormat( MSVC_SAL_PRINTF const char * fmtString, ... ) FORMAT_STRING( 1, 2 );
 

@@ -13,6 +13,7 @@ class Time
 public:
     static uint64_t GetCurrentFileTime();
     static uint64_t FileTimeToSeconds( uint64_t filetime );
+    static time_t   GetNow();
 };
 
 //------------------------------------------------------------------------------
