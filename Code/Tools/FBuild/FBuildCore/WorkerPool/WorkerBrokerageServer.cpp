@@ -42,7 +42,11 @@ WorkerBrokerageServer::~WorkerBrokerageServer()
     // Make a best-effort attempt to remove our token
     if ( m_Available )
     {
-        FileIO::FileDelete( m_BrokerageFilePath.Get() );
+        if ( !m_CoordinatorAddress.IsEmpty() )
+            SetAvailabilityToCoordinator(false);
+
+        if ( !m_BrokerageFilePath.IsEmpty() )
+            FileIO::FileDelete( m_BrokerageFilePath.Get() );
     }
 }
 

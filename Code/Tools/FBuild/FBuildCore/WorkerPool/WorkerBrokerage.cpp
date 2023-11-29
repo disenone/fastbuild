@@ -84,63 +84,7 @@ void WorkerBrokerage::InitBrokerage()
     ConvertHostNameToLocalIP4(m_HostName);
 #endif
 
-    // brokerage path includes version to reduce unnecessary comms attempts
-    const uint32_t protocolVersion = Protocol::PROTOCOL_VERSION_MAJOR;
-
-    // root folder
-    AStackString<> brokeragePath;
-    if ( m_BrokerageRoots.IsEmpty() && Env::GetEnvVariable( "FASTBUILD_BROKERAGE_PATH", brokeragePath ) )
-    {
-        // FASTBUILD_BROKERAGE_PATH can contain multiple paths separated by semi-colon. The worker will register itself into the first path only but
-        // the additional paths are paths to additional broker roots allowed for finding remote workers (in order of priority)
-        const char * start = brokeragePath.Get();
-        const char * end = brokeragePath.GetEnd();
-        AStackString<> pathSeparator( ";" );
-        while ( true )
-        {
-            AStackString<> root;
-            AStackString<> brokerageRoot;
-
-            const char * separator = brokeragePath.Find( pathSeparator, start, end );
-            if ( separator != nullptr )
-            {
-                root.Append( start, (size_t)( separator - start ) );
-            }
-            else
-            {
-                root.Append( start, (size_t)( end - start ) );
-            }
-            root.TrimStart( ' ' );
-            root.TrimEnd( ' ' );
-            // <path>/<group>/<version>/
-            #if defined( __WINDOWS__ )
-                brokerageRoot.Format( "%s\\main\\%u.windows\\", root.Get(), protocolVersion );
-            #elif defined( __OSX__ )
-                brokerageRoot.Format( "%s/main/%u.osx/", root.Get(), protocolVersion );
-            #else
-                brokerageRoot.Format( "%s/main/%u.linux/", root.Get(), protocolVersion );
-            #endif
-
-            m_BrokerageRoots.Append( brokerageRoot );
-            if ( !m_BrokerageRootPaths.IsEmpty() )
-            {
-                m_BrokerageRootPaths.Append( pathSeparator );
-            }
-
-            m_BrokerageRootPaths.Append( brokerageRoot );
-
-            if ( separator != nullptr )
-            {
-                start = separator + 1;
-            }
-            else
-            {
-                break;
-            }
-        }
-    }
-
-    if( m_CoordinatorAddress.IsEmpty() )
+    if( m_CoordinatorAddress.IsEmpty() && m_BrokerageRoots.IsEmpty() )
     {
         AStackString<> coordinator;
         if ( Env::GetEnvVariable( "FASTBUILD_COORDINATOR", coordinator ) )
@@ -149,13 +93,20 @@ void WorkerBrokerage::InitBrokerage()
         }
     }
 
+    // root folder
+    AStackString<> brokeragePath;
+    if ( m_BrokerageRoots.IsEmpty() && Env::GetEnvVariable( "FASTBUILD_BROKERAGE_PATH", brokeragePath ) && m_CoordinatorAddress.IsEmpty() )
+    {
+        SetBrokeragePath(brokeragePath);
+    }
+
     if( !m_CoordinatorAddress.IsEmpty() )
     {
         OUTPUT( "Using Coordinator: %s\n", m_CoordinatorAddress.Get() );
     }
     else if ( !m_BrokerageRoots.IsEmpty() )
     {
-        OUTPUT( "Using Brokerage: %s\n", m_BrokerageRoots[0].Get() );
+        OUTPUT( "Using Brokerage: %s\n", m_BrokerageRootPaths.Get() );
     }
     else
     {
@@ -167,6 +118,62 @@ void WorkerBrokerage::InitBrokerage()
 
     m_BrokerageInitialized = true;
 }
+
+// SetBrokeragePath
+//------------------------------------------------------------------------------
+ void WorkerBrokerage::SetBrokeragePath(const AString & brokeragePath)
+ {
+    // brokerage path includes version to reduce unnecessary comms attempts
+    const uint32_t protocolVersion = Protocol::PROTOCOL_VERSION_MAJOR;
+
+    // FASTBUILD_BROKERAGE_PATH can contain multiple paths separated by semi-colon. The worker will register itself into the first path only but
+    // the additional paths are paths to additional broker roots allowed for finding remote workers (in order of priority)
+    const char * start = brokeragePath.Get();
+    const char * end = brokeragePath.GetEnd();
+    AStackString<> pathSeparator( ";" );
+    while ( true )
+    {
+        AStackString<> root;
+        AStackString<> brokerageRoot;
+
+        const char * separator = brokeragePath.Find( pathSeparator, start, end );
+        if ( separator != nullptr )
+        {
+            root.Append( start, (size_t)( separator - start ) );
+        }
+        else
+        {
+            root.Append( start, (size_t)( end - start ) );
+        }
+        root.TrimStart( ' ' );
+        root.TrimEnd( ' ' );
+        // <path>/<group>/<version>/
+        #if defined( __WINDOWS__ )
+            brokerageRoot.Format( "%s\\main\\%u.windows\\", root.Get(), protocolVersion );
+        #elif defined( __OSX__ )
+            brokerageRoot.Format( "%s/main/%u.osx/", root.Get(), protocolVersion );
+        #else
+            brokerageRoot.Format( "%s/main/%u.linux/", root.Get(), protocolVersion );
+        #endif
+
+        m_BrokerageRoots.Append( brokerageRoot );
+        if ( !m_BrokerageRootPaths.IsEmpty() )
+        {
+            m_BrokerageRootPaths.Append( pathSeparator );
+        }
+
+        m_BrokerageRootPaths.Append( brokerageRoot );
+
+        if ( separator != nullptr )
+        {
+            start = separator + 1;
+        }
+        else
+        {
+            break;
+        }
+    }
+ }
 
 // DESTRUCTOR
 //------------------------------------------------------------------------------

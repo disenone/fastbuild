@@ -158,11 +158,11 @@ bool FBuildWorkerOptions::ProcessCommandLine( const AString & commandLine )
         }
         else if (token.BeginsWith("-help"))
         {
-            ShowUsageError(AStackString("Help"));
+            ShowUsageError("Help");
             return false;
         }
 
-        ShowUsageError(AStackString("Bad Command Line"));
+        ShowUsageError("Bad Command Line");
         return false;
     }
 
@@ -171,7 +171,7 @@ bool FBuildWorkerOptions::ProcessCommandLine( const AString & commandLine )
 
 // ShowUsageError
 //------------------------------------------------------------------------------
-void FBuildWorkerOptions::ShowUsageError(const AString & title)
+void FBuildWorkerOptions::ShowUsageError(const char * title)
 {
     const char * msg = "FBuildWorker.exe - " FBUILD_VERSION_STRING "\n"
                        "Copyright 2012-2023 Franta Fulin - https://www.fastbuild.org\n"
@@ -212,7 +212,7 @@ void FBuildWorkerOptions::ShowUsageError(const AString & title)
         msg_title.Format("FBuildWorker - %s", title);
         ::MessageBox( nullptr, msg, msg_title.Get(), MB_ICONERROR | MB_OK );
     #else
-        printf( "%s", msg );
+        printf( "%s\n%s", title, msg );
         (void)msg; // TODO:MAC Fix missing MessageBox
         (void)msg; // TODO:LINUX Fix missing MessageBox
     #endif

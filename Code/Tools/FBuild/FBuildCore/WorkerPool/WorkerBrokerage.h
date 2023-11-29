@@ -28,13 +28,7 @@ public:
     const AString & GetBrokerageRootPaths() const { return m_BrokerageRootPaths; }
     const AString & GetCoordinatorAddress() const { return m_CoordinatorAddress; }
     void SetCoordinatorAddress(const AString & address) { m_CoordinatorAddress = address; }
-    void SetBrokeragePath(const AString & path) 
-    { 
-        m_BrokerageRoots.Clear();
-        m_BrokerageRoots.Append(path);
-        m_BrokerageRootPaths.Clear();
-        m_BrokerageRootPaths.Append(path);
-    }
+    void SetBrokeragePath(const AString & path); 
 
     virtual void UpdateWorkerList(Array< uint32_t > &) {}
 

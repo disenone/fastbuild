@@ -50,7 +50,7 @@ public:
     AString m_BrokeragePath;
 
 private:
-    void ShowUsageError(const AString & title);
+    void ShowUsageError(const char * title);
 };
 
 //------------------------------------------------------------------------------
